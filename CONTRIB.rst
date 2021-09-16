@@ -253,6 +253,7 @@ please open an issue on GitHub or mention it on the mailing list.
 - Sacha Laurent <https://github.com/Cashalow>
 - Saket Choudhary <https://github.com/saketkc>
 - Sean Davis <https://github.com/seandavi>
+- Sean Johnson <https://github.com/seanrjohnson>
 - Sebastian Bassi <https://about.me/bassi>
 - Sergei Lebedev <https://github.com/superbobry>
 - Sergio Valqui <https://github.com/svalqui>
