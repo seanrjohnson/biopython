@@ -11,8 +11,8 @@ The latest news is at the top of this file.
 (In progress, not yet released): Biopython 1.80
 ===============================================
 
-This release of Biopython supports Python 3.7, 3.8 and 3.9. It has also been
-tested on PyPy3.7 v7.3.5.
+This release of Biopython supports Python 3.7, 3.8, 3.9 and 3.10. It has also
+been tested on PyPy3.7 v7.3.5.
 
 Because dict retains the item order by default since Python3.6, all instances
 of ``collections.OrderedDict`` have been replaced by either standard ``dict``
@@ -25,8 +25,28 @@ The Local Composition Complexity functions from ``Bio.SeqUtils`` now uses
 base 4 log instead of 2 as stated in the original reference Konopka (2005),
 Sequence Complexity and Composition. https://doi.org/10.1038/npg.els.0005260
 
+Append mode is now supported in ``Bio.bgzf`` (and a bug parsing blocked GZIP
+files with an internal empty block fixed).
+
 The experimental warning was dropped from ``Bio.phenotype`` (which was new in
 Biopython 1.67).
+
+Sequences now have a ``defined`` attribute that returns a boolean indicating
+if the underlying data is defined or not.
+
+The ``Bio.PDB`` module now includes a structural alignment module, using the
+combinatorial extension algorithm of Shindyalov and Bourne, commonly known as
+CEAlign. The module allows for two structures to be aligned based solely on
+their 3D conformation, ie. in a sequence-independent manner. The method is
+particularly powerful when the structures shared a very low degree of sequence
+similarity. The new module is available in ``Bio.PDB.CEAligner`` with an
+interface similar to other 3D superimposition modules.
+
+A new module ``Bio.PDB.qcprot`` implements the QCP superposition algorithm in
+pure Python, deprecating the existing C implementation. This leads to a slight
+performance improvement and to much better maintainability. The refactored
+``qcprot.QCPSuperimposer`` class has small changes to its API, to better mirror
+that of ``Bio.PDB.Superimposer``.
 
 Additionally, a number of small bugs and typos have been fixed with additions
 to the test suite.
@@ -35,12 +55,22 @@ Many thanks to the Biopython developers and community for making this release
 possible, especially the following contributors:
 
 - Aziz Khan
+- Alex Morehead
 - Chenghao Zhu
+- Christian Brueffer
 - Damien Goutte-Gattat
+- Erik  Whiting
 - Fabian Egli
-- Sebastian Bassi
+- Manuel Lera Ramirez
+- João Rodrigues
+- Jarrod Millman
+- Markus Piotrowski
 - Michiel de Hoon
+- Neil P. (first contribution)
 - Peter Cock
+- Sebastian Bassi
+- Sean Aubin
+- Tim Burke
 
 3 June 2021: Biopython 1.79
 ===========================

@@ -8,7 +8,7 @@
 r"""Use the DSSP program to calculate secondary structure and accessibility.
 
 You need to have a working version of DSSP (and a license, free for academic
-use) in order to use this. For DSSP, see http://swift.cmbi.ru.nl/gv/dssp/.
+use) in order to use this. For DSSP, see https://swift.cmbi.umcn.nl/gv/dssp/.
 
 The following Accessible surface area (ASA) values can be used, defaulting
 to the Sander and Rost values:
@@ -593,7 +593,7 @@ class DSSP(AbstractResiduePropertyMap):
                     aa = "C"
             # Take care of HETATM again
             if (resname != aa) and (res.id[0] == " " or aa != "X"):
-                raise PDBException("Structure/DSSP mismatch at %s" % res)
+                raise PDBException(f"Structure/DSSP mismatch at {res}")
 
             dssp_vals = (
                 dssp_index,

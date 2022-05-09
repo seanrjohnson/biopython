@@ -174,10 +174,10 @@ def _read_v4(f):
 
     char = f.read(preHeadersMap["headerLen"])
     header = char.decode("ascii", "ignore")
-    for header in header.split("\n"):
-        if "=" in header:
-            header = header.split("=")
-            headersMap[header[0]] = "=".join(header[1:])
+    for line in header.split("\n"):
+        if "=" in line:
+            headline = line.split("=")
+            headersMap[headline[0]] = "=".join(headline[1:])
 
     record.version = preHeadersMap["version"]
     if record.version != 4:
@@ -226,7 +226,7 @@ def _read_v4(f):
     # the record.AlgorithmParameters repeated in the data section, until an
     # EOF, i.e. b"\x04".
     char = b"\x00"
-    safetyValve = 10 ** 4
+    safetyValve = 10**4
     for i in range(safetyValve):
         char = f.read(1)
         # For debugging

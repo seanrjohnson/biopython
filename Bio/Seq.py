@@ -281,6 +281,20 @@ class SequenceDataAbstractBaseClass(ABC):
         """Return a copy of data with all ASCII characters converted to lowercase."""
         return bytes(self).lower()
 
+    def isupper(self):
+        """Return True if all ASCII characters in data are uppercase.
+
+        If there are no cased characters, the method returns False.
+        """
+        return bytes(self).isupper()
+
+    def islower(self):
+        """Return True if all ASCII characters in data are lowercase.
+
+        If there are no cased characters, the method returns False.
+        """
+        return bytes(self).islower()
+
     def replace(self, old, new):
         """Return a copy with all occurrences of substring old replaced by new."""
         return bytes(self).replace(old, new)
@@ -295,6 +309,26 @@ class SequenceDataAbstractBaseClass(ABC):
         The remaining characters are mapped through the given translation table.
         """
         return bytes(self).translate(table, delete)
+
+    @property
+    def defined(self):
+        """Return True if the sequence is defined, False if undefined or partially defined.
+
+        Zero-length sequences are always considered to be defined.
+        """
+        return True
+
+    @property
+    def defined_ranges(self):
+        """Return a tuple of the ranges where the sequence contents is defined.
+
+        The return value has the format ((start1, end1), (start2, end2), ...).
+        """
+        length = len(self)
+        if length > 0:
+            return ((0, length),)
+        else:
+            return ()
 
 
 class _SeqAbstractBaseClass(ABC):
@@ -427,6 +461,10 @@ class _SeqAbstractBaseClass(ABC):
     def __len__(self):
         """Return the length of the sequence."""
         return len(self._data)
+
+    def __iter__(self):
+        """Return an iterable of the sequence."""
+        return self._data.decode("ASCII").__iter__()
 
     def __getitem__(self, index):
         """Return a subsequence as a single letter or as a sequence object.
@@ -1301,6 +1339,20 @@ class _SeqAbstractBaseClass(ABC):
         else:
             return self.__class__(data)
 
+    def isupper(self):
+        """Return True if all ASCII characters in data are uppercase.
+
+        If there are no cased characters, the method returns False.
+        """
+        return self._data.isupper()
+
+    def islower(self):
+        """Return True if all ASCII characters in data are lowercase.
+
+        If there are no cased characters, the method returns False.
+        """
+        return self._data.islower()
+
     def translate(
         self, table="Standard", stop_symbol="*", to_stop=False, cds=False, gap="-"
     ):
@@ -1869,6 +1921,32 @@ class _SeqAbstractBaseClass(ABC):
             return self
         return self.__class__(data)
 
+    @property
+    def defined(self):
+        """Return True if the sequence is defined, False if undefined or partially defined.
+
+        Zero-length sequences are always considered to be defined.
+        """
+        if isinstance(self._data, (bytes, bytearray)):
+            return True
+        else:
+            return self._data.defined
+
+    @property
+    def defined_ranges(self):
+        """Return a tuple of the ranges where the sequence contents is defined.
+
+        The return value has the format ((start1, end1), (start2, end2), ...).
+        """
+        if isinstance(self._data, (bytes, bytearray)):
+            length = len(self)
+            if length > 0:
+                return ((0, length),)
+            else:
+                return ()
+        else:
+            return self._data.defined_ranges
+
 
 class Seq(_SeqAbstractBaseClass):
     """Read-only sequence object (essentially a string with biological methods).
@@ -1890,7 +1968,7 @@ class Seq(_SeqAbstractBaseClass):
 
         Arguments:
          - data - Sequence, required (string)
-         - length - Sequence length, used only if data is None (integer)
+         - length - Sequence length, used only if data is None or a dictionary (integer)
 
         You will typically use Bio.SeqIO to read in sequences from files as
         SeqRecord objects, whose sequence will be exposed as a Seq object via
@@ -1941,15 +2019,55 @@ class Seq(_SeqAbstractBaseClass):
         if data is None:
             if length is None:
                 raise ValueError("length must not be None if data is None")
-            self._data = _UndefinedSequenceData(length)
+            elif length == 0:
+                self._data = b""
+            elif length < 0:
+                raise ValueError("length must not be negative.")
+            else:
+                self._data = _UndefinedSequenceData(length)
         elif isinstance(data, (bytes, SequenceDataAbstractBaseClass)):
             self._data = data
         elif isinstance(data, (bytearray, _SeqAbstractBaseClass)):
-            self._data = data = bytes(data)
+            self._data = bytes(data)
         elif isinstance(data, str):
             self._data = bytes(data, encoding="ASCII")
         elif isinstance(data, dict):
-            self._data = _PartiallyDefinedSequenceData(length, data)
+            if length is None:
+                raise ValueError("length must not be None if data is a dictionary")
+            elif length == 0:
+                self._data = b""
+            elif length < 0:
+                raise ValueError("length must not be negative.")
+            else:
+                end = -1
+                starts = sorted(data.keys())
+                _data = {}
+                for start in starts:
+                    seq = data[start]
+                    if isinstance(seq, str):
+                        seq = bytes(seq, encoding="ASCII")
+                    else:
+                        try:
+                            seq = bytes(seq)
+                        except Exception:
+                            raise ValueError("Expected bytes-like objects or strings")
+                    if start < end:
+                        raise ValueError("Sequence data are overlapping.")
+                    elif start == end:
+                        _data[current] += seq  # noqa: F821
+                    else:
+                        _data[start] = seq
+                        current = start
+                    end = start + len(seq)
+                if end > length:
+                    raise ValueError(
+                        "Provided sequence data extend beyond sequence length."
+                    )
+                elif end == length and current == 0:
+                    # sequence is fully defined
+                    self._data = _data[current]
+                else:
+                    self._data = _PartiallyDefinedSequenceData(length, _data)
         else:
             raise TypeError(
                 "data should be a string, bytes, bytearray, Seq, or MutableSeq object"
@@ -2589,6 +2707,25 @@ class UnknownSeq(Seq):
             return self.__class__(len(temp_data), character=self._character)
         return Seq(temp_data)
 
+    @property
+    def defined(self):
+        """Return True if the sequence is defined, False if undefined or partially defined.
+
+        Zero-length sequences are always considered to be defined.
+        """
+        if self._length == 0:
+            return True
+        return False
+
+    @property
+    def defined_ranges(self):
+        """Return a tuple of the ranges where the sequence contents is defined.
+
+        As the sequence contents of an UnknownSeq object is fully undefined,
+        the return value is always an empty tuple.
+        """
+        return ()
+
 
 class MutableSeq(_SeqAbstractBaseClass):
     """An editable sequence object.
@@ -2832,9 +2969,11 @@ class _UndefinedSequenceData(SequenceDataAbstractBaseClass):
     __slots__ = ("_length",)
 
     def __init__(self, length):
-        """Initialize the object with the sequence length."""
-        if length < 0:
-            raise ValueError("Length must not be negative.")
+        """Initialize the object with the sequence length.
+
+        The calling function is responsible for ensuring that the length is
+        greater than zero.
+        """
         self._length = length
         super().__init__()
 
@@ -2852,8 +2991,6 @@ class _UndefinedSequenceData(SequenceDataAbstractBaseClass):
         return self._length
 
     def __bytes__(self):
-        if self._length == 0:
-            return b""
         raise UndefinedSequenceError("Sequence content is undefined")
 
     def __add__(self, other):
@@ -2887,6 +3024,22 @@ class _UndefinedSequenceData(SequenceDataAbstractBaseClass):
         # sequence of the same length
         return _UndefinedSequenceData(self._length)
 
+    def isupper(self):
+        """Return True if all ASCII characters in data are uppercase.
+
+        If there are no cased characters, the method returns False.
+        """
+        # Character case is irrelevant for an undefined sequence
+        raise UndefinedSequenceError("Sequence content is undefined")
+
+    def islower(self):
+        """Return True if all ASCII characters in data are lowercase.
+
+        If there are no cased characters, the method returns False.
+        """
+        # Character case is irrelevant for an undefined sequence
+        raise UndefinedSequenceError("Sequence content is undefined")
+
     def replace(self, old, new):
         """Return a copy with all occurrences of substring old replaced by new."""
         # Replacing substring old by new in an undefined sequence will result
@@ -2895,6 +3048,20 @@ class _UndefinedSequenceData(SequenceDataAbstractBaseClass):
         if len(old) != len(new):
             raise UndefinedSequenceError("Sequence content is undefined")
         return _UndefinedSequenceData(self._length)
+
+    @property
+    def defined(self):
+        """Return False, as the sequence is not defined and has a non-zero length."""
+        return False
+
+    @property
+    def defined_ranges(self):
+        """Return a tuple of the ranges where the sequence contents is defined.
+
+        As the sequence contents of an _UndefinedSequenceData object is fully
+        undefined, the return value is always an empty tuple.
+        """
+        return ()
 
 
 class _PartiallyDefinedSequenceData(SequenceDataAbstractBaseClass):
@@ -2911,29 +3078,13 @@ class _PartiallyDefinedSequenceData(SequenceDataAbstractBaseClass):
     __slots__ = ("_length", "_data")
 
     def __init__(self, length, data):
-        """Initialize with the sequence length and defined sequence segments."""
-        if length < 0:
-            raise ValueError("Length must not be negative.")
-        position = 0
-        starts = sorted(data.keys())
-        _data = {}
-        for start in starts:
-            seq = data[start]
-            if isinstance(seq, str):
-                seq = bytes(seq, encoding="ASCII")
-            else:
-                try:
-                    seq = bytes(seq)
-                except Exception:
-                    raise ValueError("Expected bytes-like objects or strings")
-            if start < position:
-                raise ValueError("Sequence data are overlapping.")
-            _data[start] = seq
-            position = start + len(seq)
-        if position > length:
-            raise ValueError("Provided sequence data extend beyond sequence length.")
+        """Initialize with the sequence length and defined sequence segments.
+
+        The calling function is responsible for ensuring that the length is
+        greater than zero.
+        """
         self._length = length
-        self._data = _data
+        self._data = data
         super().__init__()
 
     def __getitem__(self, key):
@@ -3003,8 +3154,6 @@ class _PartiallyDefinedSequenceData(SequenceDataAbstractBaseClass):
         return self._length
 
     def __bytes__(self):
-        if self._length == 0:
-            return b""
         raise UndefinedSequenceError("Sequence content is only partially defined")
 
     def __add__(self, other):
@@ -3080,6 +3229,22 @@ class _PartiallyDefinedSequenceData(SequenceDataAbstractBaseClass):
         data = {start: seq.lower() for start, seq in self._data.items()}
         return _PartiallyDefinedSequenceData(self._length, data)
 
+    def isupper(self):
+        """Return True if all ASCII characters in data are uppercase.
+
+        If there are no cased characters, the method returns False.
+        """
+        # Character case is irrelevant for an undefined sequence
+        raise UndefinedSequenceError("Sequence content is only partially defined")
+
+    def islower(self):
+        """Return True if all ASCII characters in data are lowercase.
+
+        If there are no cased characters, the method returns False.
+        """
+        # Character case is irrelevant for an undefined sequence
+        raise UndefinedSequenceError("Sequence content is only partially defined")
+
     def translate(self, table, delete=b""):
         """Return a copy with each character mapped by the given translation table.
 
@@ -3107,6 +3272,19 @@ class _PartiallyDefinedSequenceData(SequenceDataAbstractBaseClass):
         items = self._data.items()
         data = {start: seq.replace(old, new) for start, seq in items}
         return _PartiallyDefinedSequenceData(self._length, data)
+
+    @property
+    def defined(self):
+        """Return False, as the sequence is not fully defined and has a non-zero length."""
+        return False
+
+    @property
+    def defined_ranges(self):
+        """Return a tuple of the ranges where the sequence contents is defined.
+
+        The return value has the format ((start1, end1), (start2, end2), ...).
+        """
+        return tuple((start, start + len(seq)) for start, seq in self._data.items())
 
 
 # The transcribe, backward_transcribe, and translate functions are

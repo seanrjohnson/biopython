@@ -130,6 +130,16 @@ class TestSeq(unittest.TestCase):
     def test_replace(self):
         self.assertEqual("ATCCCA", Seq.Seq("ATC-CCA").replace("-", ""))
 
+    def test_cast_to_list(self):
+        self.assertEqual(list("ATC"), list(Seq.Seq("ATC")))
+        self.assertEqual(list("ATC"), list(Seq.MutableSeq("ATC")))
+        self.assertEqual(list(""), list(Seq.MutableSeq("")))
+        self.assertEqual(list(""), list(Seq.Seq("")))
+        with self.assertRaises(Seq.UndefinedSequenceError):
+            list(Seq.Seq(None, length=3))
+        with self.assertRaises(Seq.UndefinedSequenceError):
+            list(Seq.Seq({3: "ACGT"}, length=10))
+
 
 class TestSeqStringMethods(unittest.TestCase):
     def setUp(self):
@@ -165,6 +175,8 @@ class TestSeqStringMethods(unittest.TestCase):
         for a in self.dna + self.rna + self.nuc + self.protein:
             self.assertEqual(a.lower(), str(a).lower())
             self.assertEqual(a.upper(), str(a).upper())
+            self.assertEqual(a.islower(), str(a).islower())
+            self.assertEqual(a.isupper(), str(a).isupper())
             self.assertEqual(a.strip(), str(a).strip())
             self.assertEqual(a.lstrip(), str(a).lstrip())
             self.assertEqual(a.rstrip(), str(a).rstrip())
@@ -174,22 +186,34 @@ class TestSeqStringMethods(unittest.TestCase):
         lseq = seq.lower()
         self.assertEqual(lseq, "acgt")
         self.assertEqual(seq, "ACgt")
+        self.assertTrue(lseq.islower())
+        self.assertFalse(seq.islower())
         lseq = seq.lower(inplace=False)
         self.assertEqual(lseq, "acgt")
         self.assertEqual(seq, "ACgt")
+        self.assertTrue(lseq.islower())
+        self.assertFalse(seq.islower())
         lseq = seq.lower(inplace=True)
         self.assertEqual(lseq, "acgt")
         self.assertIs(lseq, seq)
+        self.assertTrue(lseq.islower())
+        self.assertTrue(lseq.islower())
         seq = Seq.MutableSeq("ACgt")
         useq = seq.upper()
         self.assertEqual(useq, "ACGT")
         self.assertEqual(seq, "ACgt")
+        self.assertTrue(useq.isupper())
+        self.assertFalse(seq.isupper())
         useq = seq.upper(inplace=False)
         self.assertEqual(useq, "ACGT")
         self.assertEqual(seq, "ACgt")
+        self.assertTrue(useq.isupper())
+        self.assertFalse(seq.isupper())
         useq = seq.upper(inplace=True)
         self.assertEqual(useq, "ACGT")
         self.assertIs(useq, seq)
+        self.assertTrue(useq.isupper())
+        self.assertTrue(seq.isupper())
 
     def test_hash(self):
         with warnings.catch_warnings(record=True):
@@ -1435,6 +1459,43 @@ class TestAttributes(unittest.TestCase):
         with self.assertRaises(AttributeError):
             s.dog
         self.assertNotIn("dog", dir(s))
+
+
+class TestSeqDefined(unittest.TestCase):
+    def test_zero_length(self):
+        zero_length_seqs = [
+            Seq.Seq(""),
+            Seq.Seq(None, length=0),
+            Seq.Seq({}, length=0),
+            Seq.UnknownSeq(length=0),
+            Seq.MutableSeq(""),
+        ]
+
+        for seq in zero_length_seqs:
+            self.assertTrue(seq.defined, msg=repr(seq))
+            self.assertEqual(seq.defined_ranges, (), msg=repr(seq))
+
+    def test_undefined(self):
+        seq = Seq.Seq(None, length=1)
+        self.assertFalse(seq.defined)
+        self.assertEqual(seq.defined_ranges, ())
+        seq = Seq.Seq({3: "ACGT"}, length=10)
+        self.assertFalse(seq.defined)
+        self.assertEqual(seq.defined_ranges, ((3, 7),))
+        seq = Seq.UnknownSeq(length=1)
+        self.assertFalse(seq.defined)
+        self.assertEqual(seq.defined_ranges, ())
+
+    def test_defined(self):
+        seqs = [
+            Seq.Seq("T"),
+            Seq.Seq({0: "A"}, length=1),
+            Seq.Seq({0: "A", 1: "C"}, length=2),
+        ]
+
+        for seq in seqs:
+            self.assertTrue(seq.defined, msg=repr(seq))
+            self.assertEqual(seq.defined_ranges, ((0, len(seq)),), msg=repr(seq))
 
 
 if __name__ == "__main__":

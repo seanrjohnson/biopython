@@ -33,11 +33,11 @@ Biopython README file
 The Biopython Project is an international association of developers of freely
 available Python tools for computational molecular biology.
 
-Our user-centric documentation is hosted on http://biopython.org including
-the main Biopython Tutorial and Cookbook:
-
-* HTML - http://biopython.org/DIST/docs/tutorial/Tutorial.html
-* PDF - http://biopython.org/DIST/docs/tutorial/Tutorial.pdf
+Our user-centric documentation is hosted on https://biopython.org including
+our `API Documentation <https://biopython.org/docs/latest/api/>`_ and the main
+`Biopython Tutorial and Cookbook
+<http://biopython.org/DIST/docs/tutorial/Tutorial.html>`_
+(`PDF <http://biopython.org/DIST/docs/tutorial/Tutorial.pdf>`_).
 
 This README file is intended primarily for people interested in working
 with the Biopython source code, either one of the releases from the
@@ -88,7 +88,7 @@ We currently recommend using Python 3.9 from http://www.python.org
 Biopython is currently supported and tested on the following Python
 implementations:
 
-- Python 3.7, 3.8, 3.9 -- see http://www.python.org
+- Python 3.7, 3.8, 3.9, and 3.10 -- see http://www.python.org
 
 - PyPy3.7 v7.3.5 -- or later, see http://www.pypy.org
 

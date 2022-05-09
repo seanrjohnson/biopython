@@ -16,6 +16,16 @@ from Bio.Align import Alignment
 from Bio.Align import interfaces
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
+from Bio import BiopythonExperimentalWarning
+
+
+import warnings
+
+warnings.warn(
+    "Bio.Align.fasta_m8 is an experimental module which may undergo "
+    "significant changes prior to its future official release.",
+    BiopythonExperimentalWarning,
+)
 
 
 class State(enum.Enum):
@@ -139,13 +149,12 @@ class AlignmentIterator(interfaces.AlignmentIterator):
         elif self._alignment_representation == "CIGAR":
             coordinates = self.parse_cigar(columns[12])
         coordinates[0, :] += target_start
-        query_size = self._query_size
         if query_start < query_end:
             coordinates[1, :] += query_start
         else:
             # mapped to reverse strand
-            coordinates[1, :] = coordinates[1, ::-1]
-            coordinates[1, :] += query_size - query_start - 1
+            coordinates[1, :] = query_start - coordinates[1, :] + 1
+        query_size = self._query_size
         query_sequence = Seq(None, length=query_size)
         query = SeqRecord(query_sequence, id=query_id)
         if self._query_description is not None:
